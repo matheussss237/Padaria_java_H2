@@ -107,7 +107,7 @@ if (formCheckout && exigirLogin()) {
         try {
             const criada = await api('/compras', { method: 'POST', body: compra });
             Carrinho.limpar();
-            alert(`Compra nº ${criada.id} finalizada! Total: ${formatarPreco(criada.valorTotal)}. Obrigado por comprar na Padaria.`);
+            alert(`Compra finalizada! Total: ${formatarPreco(criada.valorTotal)}. Obrigado por comprar na Padaria.`);
             location.href = 'produtos.html';
         } catch (erro) {
             if (erro.status === 401) {
