@@ -3,41 +3,59 @@ package com.matheushenrique.cadastro_usuario.controller;
 import com.matheushenrique.cadastro_usuario.business.UsuarioService;
 import com.matheushenrique.cadastro_usuario.infrastructure.entitys.Usuario;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/usuario")
+@RequestMapping("/usuarios")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "https://padaria-java.onrender.com/usuario")
 
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
+    // Cliente só pode mexer no próprio cadastro; admin pode mexer em todos
+    private void verificarAcesso(String cpf, Authentication auth) {
+        boolean admin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!admin && !auth.getName().equals(cpf)) {
+            throw new AccessDeniedException("Você só pode acessar o seu próprio cadastro");
+        }
+    }
+
     @PostMapping
-    public ResponseEntity <Void> salvarUsuario(@RequestBody Usuario usuario) {
-            usuarioService.salvarUsuario(usuario);
-            return ResponseEntity.ok().build();
+    public ResponseEntity <Usuario> salvarUsuario(@RequestBody Usuario usuario) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.salvarUsuario(usuario));
     }
 
     @GetMapping
-    public ResponseEntity <Usuario> buscarUsuarioPorCpf(@RequestParam String cpf) {
+    public ResponseEntity<List<Usuario>> listarTodos() {
+        return ResponseEntity.ok(usuarioService.listarTodos());
+    }
+
+    @GetMapping("/{cpf}")
+    public ResponseEntity <Usuario> buscarUsuarioPorCpf(@PathVariable String cpf, Authentication auth) {
+        verificarAcesso(cpf, auth);
         return ResponseEntity.ok(usuarioService.buscarUsuarioPorCpf(cpf));
     }
 
-    @DeleteMapping
-    public ResponseEntity <Void> deletarUsuarioPorCpf(@RequestParam String cpf) {
+    @DeleteMapping("/{cpf}")
+    public ResponseEntity <Void> deletarUsuarioPorCpf(@PathVariable String cpf, Authentication auth) {
+        verificarAcesso(cpf, auth);
         usuarioService.deletarUsuarioPorCpf(cpf);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
-    @PutMapping
-    public ResponseEntity <Void> atualizarUsuarioporCpf(@RequestParam String cpf,
-                                                     @RequestBody Usuario usuario) {
-
-        usuarioService.atualizarUsuarioporCpf(cpf, usuario);
-        return ResponseEntity.ok().build();
+    @PutMapping("/{cpf}")
+    public ResponseEntity <Usuario> atualizarUsuarioporCpf(@PathVariable String cpf,
+                                                        @RequestBody Usuario usuario,
+                                                        Authentication auth) {
+        verificarAcesso(cpf, auth);
+        return ResponseEntity.ok(usuarioService.atualizarUsuarioporCpf(cpf, usuario));
     }
 }
-

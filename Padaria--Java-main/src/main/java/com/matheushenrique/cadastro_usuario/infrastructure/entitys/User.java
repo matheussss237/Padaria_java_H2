@@ -1,5 +1,6 @@
 package com.matheushenrique.cadastro_usuario.infrastructure.entitys;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.matheushenrique.cadastro_usuario.role.UserRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -25,24 +26,31 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true, nullable = false)
     private String username;
 
+    @JsonIgnore
     private String password;
 
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
-    private boolean enabled;
+    private boolean enabled = true;
 
     public User (String username, String password, UserRole role) {
         this.username = username;
         this.password = password;
         this.role = role;
+        this.enabled = true;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
+        // O Spring Security espera o prefixo ROLE_ para usar hasRole("ADMIN")
+        if (role == UserRole.ADMIN) {
+            return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_USER"));
+        }
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override

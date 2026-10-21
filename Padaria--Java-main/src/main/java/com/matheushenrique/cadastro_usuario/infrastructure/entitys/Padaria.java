@@ -14,7 +14,7 @@ import lombok.*;
 public class Padaria {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "nome")
@@ -22,5 +22,16 @@ public class Padaria {
 
     @Column(name = "preco")
     private Double preco;
+
+    @Column(name = "descricao")
+    private String descricao;
+
+    // paes, doces, salgados ou bebidas (usado no filtro da página de produtos)
+    @Column(name = "categoria")
+    private String categoria;
+
+    // caminho da imagem dentro de /static (ex: img/Sonho.jpg)
+    @Column(name = "imagem")
+    private String imagem;
 
 }

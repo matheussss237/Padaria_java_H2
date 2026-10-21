@@ -1,36 +1,62 @@
 package com.matheushenrique.cadastro_usuario.business;
 
 
+import com.matheushenrique.cadastro_usuario.exceptions.RegraNegocioException;
+import com.matheushenrique.cadastro_usuario.exceptions.ResourceNotFoundException;
 import com.matheushenrique.cadastro_usuario.infrastructure.entitys.Usuario;
+import com.matheushenrique.cadastro_usuario.infrastructure.repository.CompraRepository;
 import com.matheushenrique.cadastro_usuario.infrastructure.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class UsuarioService {
 
     private final UsuarioRepository repository;
+    private final CompraRepository compraRepository;
+    private final AuthorizationService authorizationService;
 
-    public UsuarioService(UsuarioRepository repository) {
+    public UsuarioService(UsuarioRepository repository, CompraRepository compraRepository,
+                          AuthorizationService authorizationService) {
         this.repository = repository;
+        this.compraRepository = compraRepository;
+        this.authorizationService = authorizationService;
     }
 
-    public void salvarUsuario(Usuario usuario) {
-        repository.saveAndFlush(usuario);
+    public Usuario salvarUsuario(Usuario usuario) {
+        if (usuario.getCpf() == null || usuario.getCpf().isBlank()) {
+            throw new RegraNegocioException("CPF é obrigatório");
+        }
+        if (repository.findByCpf(usuario.getCpf()).isPresent()) {
+            throw new RegraNegocioException("Já existe um usuário com esse CPF");
+        }
+        usuario.setId(null);
+        return repository.saveAndFlush(usuario);
     }
+
+    public List<Usuario> listarTodos() {
+        return repository.findAll();
+    }
+
     public Usuario buscarUsuarioPorCpf(String cpf) {
         return repository.findByCpf(cpf).orElseThrow(
-                ()-> new RuntimeException("Cpf não encontrado")
+                ()-> new ResourceNotFoundException("Cpf não encontrado")
         );
     }
 
+    // Remove também as compras e o login ligado a esse CPF
+    @Transactional
     public void deletarUsuarioPorCpf(String cpf) {
+        buscarUsuarioPorCpf(cpf);
+        compraRepository.deleteByUsuarioCpf(cpf);
         repository.deleteByCpf(cpf);
+        authorizationService.removerLogin(cpf);
     }
 
-    public void atualizarUsuarioporCpf(String cpf, Usuario usuario) {
-        Usuario usuarioEntity = repository.findByCpf(cpf).orElseThrow(
-                ()-> new RuntimeException("Usuario não encontrado")
-        );
+    public Usuario atualizarUsuarioporCpf(String cpf, Usuario usuario) {
+        Usuario usuarioEntity = buscarUsuarioPorCpf(cpf);
         Usuario usuarioAtualizado = Usuario.builder()
                 .id(usuarioEntity.getId())
                 .nome(usuario.getNome()!=null ? usuario.getNome():
@@ -42,6 +68,6 @@ public class UsuarioService {
                         usuarioEntity.getDataNascimento())
                 .telefone(usuario.getTelefone()!= null ? usuario.getTelefone() :
                         usuarioEntity.getTelefone()).build();
-        repository.saveAndFlush(usuarioAtualizado);
+        return repository.saveAndFlush(usuarioAtualizado);
     }
 }
